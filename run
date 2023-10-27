@@ -1,0 +1,12 @@
+#!/etc/env bash
+
+write_file() {
+    if [ -z "$1" ]; then
+        touch "textfile.txt"
+    else
+        echo "$1" > "textfile.txt"
+    fi
+
+}
+
+case 
