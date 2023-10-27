@@ -1,12 +1,29 @@
-#!/etc/env bash
+#!/usr/bin/env bash
 
 write_file() {
-    if [ -z "$1" ]; then
-        touch "textfile.txt"
-    else
-        echo "$1" > "textfile.txt"
-    fi
-
+	if [[ -z $1 ]]; then
+		echo "Creating empty file"
+		touch "textfile.txt"
+	else
+		echo "Creating writing $1 to file"
+		echo "$1" >"textfile.txt"
+	fi
 }
 
-case
+check_file() {
+	if [[ -f "textfile.txt" ]]; then
+		echo "File exists"
+	else
+		echo "File does not exist"
+	fi
+	write_file "$@"
+}
+
+case $1 in
+"--help")
+	echo "$0 literally only creates a file called textfile.txt"
+	;;
+*)
+	check_file "$@"
+	;;
+esac
