@@ -15,8 +15,8 @@ check_file() {
 		echo "File exists"
 	else
 		echo "File does not exist"
+		write_file "$@"
 	fi
-	write_file "$@"
 }
 
 case $1 in
