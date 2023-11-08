@@ -5,7 +5,7 @@ write_file() {
 		echo "Creating empty file"
 		touch "textfile.txt"
 	else
-		echo "Creating writing $1 to file"
+		echo "Creating & writing $1 to file"
 		echo "$1" >"textfile.txt"
 	fi
 }
@@ -22,6 +22,7 @@ check_file() {
 case $1 in
 "--help")
 	echo "$0 literally only creates a file called textfile.txt"
+	echo "or appends the second argument to a new file"
 	;;
 *)
 	check_file "$@"
