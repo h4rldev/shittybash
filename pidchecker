@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -o pipefail
+
+check_for_process_name_loop() {
+	while true; do
+		sleep 30
+		if pgrep -f -l "${process}" | grep -v "^$$" >/dev/null; then
+			echo "Process ${process} is still running"
+		else
+			echo "Process ${process} is still not running or has stopped running"
+		fi
+	done
+}
+
+check_for_process_pid_loop() {
+	while true; do
+		sleep 30
+		if ps -p "${process}" >/dev/null; then
+			echo "Process with pid ${process} is still running"
+		else
+			echo "Process with pid ${process} is still not running or has stopped running"
+		fi
+	done
+}
+
+check_for_process_name() {
+	# checks if process is running by name
+	if pgrep -f -l "${process}" | grep -v "^$$" >/dev/null; then
+		echo "Process ${process} is running"
+	else
+		echo "Process ${process} is not running"
+	fi
+	check_for_process_name_loop "${process}"
+}
+
+check_for_process_pid() {
+	# checks if process is running by pid
+	if ps -p "${process}" >/dev/null; then
+		if $? -eq 1; then
+			echo "Process ${process} has stopped running"
+		fi
+		echo "Process with pid ${process} is running"
+	else
+		echo "Process with pid ${process} is not running"
+	fi
+	check_for_process_pid_loop "${process}"
+}
+
+check_for_process() {
+	process="$1"
+	while [[ -z ${process} ]]; do
+		read -rp "Enter a process name or PID: " process
+	done
+	# checks if process is numeric
+	if [[ ${process} =~ ^[0-9]+$ ]]; then
+		check_for_process_pid "${process}"
+	else
+		check_for_process_name "${process}"
+	fi
+}
+
+case $1 in
+"--help")
+	echo "$0 v0.1"
+	echo "Watches if a process is running"
+	echo "Usage: $0 [pid] / [process name]"
+	echo "Will prompt for a process name / pid if no argument is given"
+	;;
+
+*)
+	check_for_process "$1"
+	;;
+esac
