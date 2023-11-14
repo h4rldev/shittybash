@@ -1,28 +1,74 @@
 #!/usr/bin/env bash
 
 write_file() {
-	if [[ -z $1 ]]; then
-		echo "Creating empty file"
-		touch "textfile.txt"
+	if [[ -z $3 ]]; then
+		echo "Creating & writing \"$2\" to file with default name: textfile.txt"
+		echo "$2" >"textfile.txt"
 	else
-		echo "Creating & writing $1 to file"
-		echo "$1" >"textfile.txt"
+		if [[ -n $3 ]]; then
+			echo "writing \"$2\" to $3"
+			echo "$2" >"$3"
+		else
+			echo "Creating & writing \"$2\" to file"
+			echo "$2" >"textfile.txt"
+		fi
 	fi
 }
 
 check_file() {
-	if [[ -f "textfile.txt" ]]; then
-		echo "File exists"
+	if [[ -n $3 ]]; then
+		if [[ -f $3 ]]; then
+			echo "File exists"
+		else
+			echo "$3 does not exist"
+			write_file "$@"
+		fi
 	else
-		echo "File does not exist"
-		write_file "$@"
+		if [[ -f "textfile.txt" ]]; then
+			echo "File exists"
+		else
+			echo "File does not exist"
+			write_file "$@"
+		fi
+	fi
+}
+
+delete_file() {
+	if [[ -n $2 ]]; then
+		echo "Deleting $2"
+		rm "$2"
+	else
+		echo "Deleting textfile.txt"
+		rm "textfile.txt"
+	fi
+}
+
+append_file() {
+	if [[ -n $3 ]]; then
+		echo "Appending \"$2\" to $3"
+		echo "$2" >>"$3"
+	else
+		echo "Appending \"$2\" to textfile.txt"
+		echo "$2" >>"textfile.txt"
 	fi
 }
 
 case $1 in
 "--help")
-	echo "$0 literally only creates a file called textfile.txt"
-	echo "or appends the second argument to a new file"
+	echo "Usage: $0 [flag], [string], [file]"
+	echo "Flags:"
+	echo "-a: Append string to file"
+	echo "-w: Write string to file"
+	echo "-d: Delete file"
+	;;
+"-d")
+	delete_file "$@"
+	;;
+"-w")
+	check_file "$@"
+	;;
+"-a")
+	append_file "$@"
 	;;
 *)
 	check_file "$@"
