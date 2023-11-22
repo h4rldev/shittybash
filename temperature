@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+# Exit if any piped command fails
+set -o pipefail
+
+setup() {
+	# For people who don't know what they're doing and just want to convert a temperature
+	echo "What temperature scale do you want to convert to?"
+	echo "1. Celsius"
+	echo "2. Fahrenheit"
+	read -rp "Enter a number: " scale
+	case ${scale} in
+	1 | "celsius" | "Celsius" | "c" | "C" | "1. Celsius" | "1. celsius" | "1. C" | "1. c")
+		echo "Enter a temperature in celsius"
+		read -rp "Enter a temperature: " temperature
+		fahrenheight_to_celsius "${temperature}"
+		;;
+	2 | "fahrenheit" | "Fahrenheit" | "f" | "F" | "2. Fahrenheit" | "2. fahrenheit" | "2. F" | "2. f")
+		echo "Enter a temperature in fahrenheit"
+		read -rp "Enter a temperature: " temperature
+		celsius_to_fahrenheight "${temperature}"
+		;;
+	*)
+		echo "Invalid input"
+		exit 1
+		;;
+	esac
+}
+
+celsius_to_fahrenheight() {
+	# Convert celsius to fahrenheight
+	if ! fahrenheit=$(echo "scale=1; ${temperature} * 9 / 5 + 32" | bc); then # If the conversion fails
+		echo "Conversion to fahrenheight failed, make sure you have bc installed"
+		exit 1
+	fi
+	echo "The temperature of ${temperature}°C is equal to ${fahrenheit}°F"
+}
+
+fahrenheight_to_celsius() {
+	# Convert fahrenheight to celsius
+	if ! celsius=$(echo "scale=1; (${temperature} - 32) * 5 / 9" | bc); then # If the conversion fails
+		echo "Conversion to celsius failed, make sure you have bc installed"
+		exit 1
+	fi
+	echo "The temperature of ${temperature}°F is equal to ${celsius}°C"
+}
+
+case $1 in
+# Argument parsing
+"-f" | "--fahrenheight" | "--f" | "--fahrenheit")
+	if [[ -z $2 ]]; then
+		echo "No temperature given"
+		read -rp "Enter a temperature: " temperature
+	else
+		temperature="$2"
+	fi
+	celsius_to_fahrenheight "${temperature}"
+	;;
+"-c" | "--celsius" | "--c")
+	if [[ -z $2 ]]; then
+		echo "No temperature given"
+		read -rp "Enter a temperature: " temperature
+	else
+		temperature="$2"
+	fi
+	fahrenheight_to_celsius "${temperature}"
+	;;
+# Help
+"--help" | "-h" | "--h")
+	echo "Usage: $0 [OPTION]..."
+	echo "Converts celsius to fahrenheight and vice versa"
+	echo "-f | --f | --fahrenheight | --fahrenheit [VALUE]	converts celsius to fahrenheight"
+	echo "-c | --c | --celsius [VALUE]		                converts fahrenheight to celsius"
+	echo "--help | -h | --h                                 display this help and exit"
+	;;
+*)
+	setup
+	;;
+esac
