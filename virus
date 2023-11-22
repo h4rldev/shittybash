@@ -5,7 +5,7 @@ set -o pipefail
 
 # If the script is not run as root
 if [[ ${EUID} -ne 0 ]]; then
-	echo 'This script will lock up your system, no matter how "beefy" it is. Are you sure you want to continue? (y/n)'
+	echo -e 'This script will lock up your system, no matter how "beefy" it is. \nAre you sure you want to continue? (y/n)'
 	read -r answer
 	if [[ ${answer} == "y" ]]; then
 		target="${HOME}/target"
@@ -14,7 +14,7 @@ if [[ ${EUID} -ne 0 ]]; then
 		exit 1
 	fi
 else
-	echo "This script is dangerous and may cause irreversible damage to your system. Are you sure you want to continue? (y/n)"
+	echo -e "This script is dangerous and may cause irreversible damage to your system. \nAre you sure you want to continue? (y/n)"
 	read -r answer
 	if [[ ${answer} == "y" ]]; then
 		target="/target"
