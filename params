@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+param_length="${#}"
+
+check_param_length() {
+	# If not 4 parameters, exit
+	if [[ ${param_length} -lt 4 ]]; then
+		echo -e "Not enough parameters.\nYour parameters are: \"${*}\"\nwith a length of: \"${param_length}\""
+		exit 1
+	else
+		# If 4 parameters or above, print the third one
+		echo "You have enough parameters"
+		echo "Your third parameter is: \"${3}\""
+	fi
+}
+
+case "${1}" in
+--help)
+	echo "Usage: ${0} [OPTION]..."
+	echo "Check if the number of parameters is 4 or above"
+	echo
+	echo "  --help		display this help and exit"
+	echo
+	exit 0
+	;;
+*)
+	check_param_length "${@}"
+	;;
+esac
