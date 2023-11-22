@@ -20,13 +20,13 @@ setup() {
 	case ${scale} in
 	1 | "1." | "celsius" | "Celsius" | "c" | "C" | "1. Celsius" | "1. celsius" | "1. C" | "1. c")
 		clear_from 4
-		read -rp "Enter a temperature in celsius: " temperature
+		read -rp "Enter a temperature in fahrenheit: " temperature
 		clear_from 1
 		fahrenheight_to_celsius "${temperature}"
 		;;
 	2 | "2." | "fahrenheit" | "Fahrenheit" | "f" | "F" | "2. Fahrenheit" | "2. fahrenheit" | "2. F" | "2. f")
 		clear_from 4
-		read -rp "Enter a temperature in fahrenheit: " temperature
+		read -rp "Enter a temperature in celsius: " temperature
 		clear_from 1
 		celsius_to_fahrenheight "${temperature}"
 		;;
