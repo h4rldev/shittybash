@@ -3,6 +3,14 @@
 # Exit if any piped command fails
 set -o pipefail
 
+# clear the screen from line and down
+clear_from() {
+	for ((i = 1; i <= $1; i++)); do
+		tput cuu1
+		tput el
+	done
+}
+
 setup() {
 	# For people who don't know what they're doing and just want to convert a temperature
 	echo "What temperature scale do you want to convert to?"
@@ -10,14 +18,16 @@ setup() {
 	echo "2. Fahrenheit"
 	read -rp "Enter a number: " scale
 	case ${scale} in
-	1 | "celsius" | "Celsius" | "c" | "C" | "1. Celsius" | "1. celsius" | "1. C" | "1. c")
-		echo "Enter a temperature in celsius"
-		read -rp "Enter a temperature: " temperature
+	1 | "1." | "celsius" | "Celsius" | "c" | "C" | "1. Celsius" | "1. celsius" | "1. C" | "1. c")
+		clear_from 4
+		read -rp "Enter a temperature in celsius: " temperature
+		clear_from 1
 		fahrenheight_to_celsius "${temperature}"
 		;;
-	2 | "fahrenheit" | "Fahrenheit" | "f" | "F" | "2. Fahrenheit" | "2. fahrenheit" | "2. F" | "2. f")
-		echo "Enter a temperature in fahrenheit"
-		read -rp "Enter a temperature: " temperature
+	2 | "2." | "fahrenheit" | "Fahrenheit" | "f" | "F" | "2. Fahrenheit" | "2. fahrenheit" | "2. F" | "2. f")
+		clear_from 4
+		read -rp "Enter a temperature in fahrenheit: " temperature
+		clear_from 1
 		celsius_to_fahrenheight "${temperature}"
 		;;
 	*)
@@ -51,6 +61,7 @@ case $1 in
 	if [[ -z $2 ]]; then
 		echo "No temperature given"
 		read -rp "Enter a temperature: " temperature
+		clear_from 2
 	else
 		temperature="$2"
 	fi
@@ -60,6 +71,7 @@ case $1 in
 	if [[ -z $2 ]]; then
 		echo "No temperature given"
 		read -rp "Enter a temperature: " temperature
+		clear_from 2
 	else
 		temperature="$2"
 	fi
