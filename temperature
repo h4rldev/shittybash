@@ -65,7 +65,7 @@ case $1 in
 	else
 		temperature="$2"
 	fi
-	celsius_to_fahrenheight "${temperature}"
+	fahrenheight_to_celsius "${temperature}"
 	;;
 "-c" | "--celsius" | "--c")
 	if [[ -z $2 ]]; then
@@ -75,7 +75,7 @@ case $1 in
 	else
 		temperature="$2"
 	fi
-	fahrenheight_to_celsius "${temperature}"
+	celsius_to_fahrenheight "${temperature}"
 	;;
 # Help
 "--help" | "-h" | "--h")
