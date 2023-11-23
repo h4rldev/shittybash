@@ -83,7 +83,7 @@ case $1 in
 	echo "Converts celsius to fahrenheight and vice versa"
 	echo "-f | --f | --fahrenheight | --fahrenheit [VALUE]	converts celsius to fahrenheight"
 	echo "-c | --c | --celsius [VALUE]		                converts fahrenheight to celsius"
-	echo "--help | -h | --h                                 display this help and exit"
+	echo "--help | -h | --h                                 	display this help and exit"
 	;;
 *)
 	setup
