@@ -9,16 +9,16 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Error, warning and success handlers
-error_handler() {
+# Error, warning and success
+error() {
 	echo -e "${RED}Error${NC}: ${1}"
 }
 
-success_handler() {
+success() {
 	echo -e "${GREEN}Success${NC}: ${1}"
 }
 
-warning_handler() {
+warning() {
 	echo -e "${YELLOW}Warn${NC}: ${1}"
 }
 
