@@ -4,7 +4,7 @@
 set -oe pipefail
 
 DEBUG=1 # Set to 1 to enable debug messages
-LOG=1   # Set to 1 to enable log messages
+LOG=0   # Set to 1 to enable log messages
 
 # Ansi escape colors
 RED='\033[0;31m'
@@ -17,35 +17,35 @@ NC='\033[0m'
 
 # Error, success, info and warning messages
 error() {
-	if [[ -z ${LOG} ]]; then
+	if [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${RED}ERROR${NC}] ${1}"
 }
 
 success() {
-	if [[ -z ${LOG} ]]; then
+	if [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${GREEN}SUCCESS${NC}] ${1}"
 }
 
 info() {
-	if [[ -z ${LOG} ]]; then
+	if [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${CYAN}INFO${NC}] ${1}"
 }
 
 debug() {
-	if [[ -z ${DEBUG} ]]; then
+	if [[ -v ${DEBUG} ]]; then
 		return
 	fi
 	echo -e "[${BLUE}DEBUG${NC}] ${1}"
 }
 
 warn() {
-	if [[ -z ${LOG} ]]; then
+	if [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${YELLOW}WARNING${NC}] ${1}"
