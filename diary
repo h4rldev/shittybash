@@ -18,6 +18,10 @@ success() {
 	echo -e "${GREEN}Success${NC}: ${1}"
 }
 
+info() {
+	echo -e "${CYAN}Info${NC}: ${1}"
+}
+
 warning() {
 	echo -e "${YELLOW}Warn${NC}: ${1}"
 }
