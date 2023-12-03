@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+# Ansi escape colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Error, warning and success handlers
+error_handler() {
+	echo -e "${RED}Error${NC}: ${1}"
+}
+
+success_handler() {
+	echo -e "${GREEN}Success${NC}: ${1}"
+}
+
+warning_handler() {
+	echo -e "${YELLOW}Warn${NC}: ${1}"
+}
+
+# Preliminary checks
+DIARY_DIR="${HOME}/.diary"
+if [[ ! -d ${DIARY_DIR} ]]; then
+	warning_handler "Diary directory not found, creating one"
+	mkdir -p "${DIARY_DIR}"
+fi
+
+# Diary functions
+new_diary() {
+	if [[ -z $2 ]]; then
+		error_handler "No diary name given"
+		echo -e -n "${BLUE}Enter diary name${NC}: "
+		read -r DIARY_NAME
+	else
+		DIARY_NAME=$2
+	fi
+
+	local NEW_DIARY="${DIARY_DIR}/${DIARY_NAME}.md"
+	if [[ -f ${NEW_DIARY} ]]; then
+		echo -e "${RED}Diary already exists${NC}"
+	fi
+}
+
+default_diary() {
+	echo "default diary"
+}
+
+write_help() {
+	echo -e "Usage: $0 [OPTION] [DIARY]"
+	echo -e "Options:"
+	echo -e "${RED}new, n, --new, -n,${NC} \t\t |"
+	echo -e "${RED}create, c, --create, -c,${NC} \t |"
+	echo -e "${RED}add, a, --add, -a,${NC} \t\t | \t${CYAN}Creates a new diary with the given name${NC}"
+	echo -e "${RED}make, m, --make, -m,${NC} \t\t |"
+	echo -e "${RED}-yes${NC} \t\t\t\t |"
+	echo -e "\t\t\t\t |"
+	echo -e "${RED}default, d, --default, -d${NC} \t | \t${CYAN}Sets the default diary${NC}"
+	echo -e "\t\t\t\t |"
+	echo -e "${RED}list, ls, --list, -ls${NC} \t\t | \t${CYAN}Lists all diaries${NC}"
+	echo -e "\t\t\t\t |"
+	echo -e "${RED}edit, e, --edit, -e${NC} \t\t | \t${CYAN}Edits the given diary (${GREEN}or the default diary if none is given${CYAN})${NC}"
+	echo -e "\t\t\t\t |"
+	echo -e "${RED}delete, del, --delete, -del,${NC} \t |"
+	echo -e "${RED}rm, remove, -rm, --remove,${NC} \t | \t${CYAN}Deletes the given diary (${GREEN}or the default diary if none is given${CYAN})${NC}"
+	echo -e "${RED}-no${NC} \t\t\t\t |"
+	echo -e "\t\t\t\t |"
+	echo -e "${RED}help, h, --help, -h${NC} \t\t | \t${CYAN}Shows this help message${NC}"
+}
+
+case $1 in
+"new" | "n" | "--new" | "-n" | "create" | "c" | "--create" | "-c" | "add" | "a" | "--add" | "-a" | "make" | "m" | "--make" | "-m" | "-yes")
+	new_diary "${2}"
+	;;
+"default" | "d" | "--default" | "-d")
+	echo "default diary"
+	;;
+"list" | "ls" | "--list" | "-ls")
+	echo "list diaries"
+	;;
+"edit" | "e" | "--edit" | "-e")
+	echo "edit diary"
+	;;
+"delete" | "del" | "rm" | "remove" | "--delete" | "-del" | "-rm" | "--remove" | "-no")
+	echo "delete diary"
+	;;
+"help" | "h" | "--help" | "-h" | *)
+	write_help
+	;;
+esac
