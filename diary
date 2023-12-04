@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # set pipefail so that if any command in a pipe fails, the pipe as a whole fails
-set -oe pipefail
+set -o pipefail
 
 DEBUG=1 # Set to 1 to enable debug messages
-LOG=0   # Set to 1 to enable log messages
+LOG=1   # Set to 1 to enable log messages
 
 # Ansi escape colors
 RED='\033[0;31m'
@@ -17,35 +17,35 @@ NC='\033[0m'
 
 # Error, success, info and warning messages
 error() {
-	if [[ -v ${LOG} ]]; then
+	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${RED}ERROR${NC}] ${1}"
 }
 
 success() {
-	if [[ -v ${LOG} ]]; then
+	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${GREEN}SUCCESS${NC}] ${1}"
 }
 
 info() {
-	if [[ -v ${LOG} ]]; then
+	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${CYAN}INFO${NC}] ${1}"
 }
 
 debug() {
-	if [[ -v ${DEBUG} ]]; then
+	if ! [[ -v ${DEBUG} ]]; then
 		return
 	fi
 	echo -e "[${BLUE}DEBUG${NC}] ${1}"
 }
 
 warn() {
-	if [[ -v ${LOG} ]]; then
+	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${YELLOW}WARNING${NC}] ${1}"
@@ -65,6 +65,11 @@ DIARY_DIR="${HOME}/.diary"
 FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$") # Find all diaries in the diary directory
 readarray -t DIARY_LIST <<<"${FIND_RESULT}"                                                                    # Convert the find result to an array
 FZF_INSTALLED=$(command -v fzf)
+if ! cat "${DIARY_DIR}/.default_diary" >/dev/null 2>&1; then
+	info "No default diary set"
+else
+	DEFAULT_DIARY=$(cat "${DIARY_DIR}/.default_diary")
+fi
 
 if [[ ! -d ${DIARY_DIR} ]]; then
 	warn "Diary directory not found, creating one"
@@ -72,15 +77,83 @@ if [[ ! -d ${DIARY_DIR} ]]; then
 	mkdir -p "${DIARY_DIR}"
 fi
 
-# Check if fzf is installed and exit if it isn't
-# fzf is a fuzzy finder used to make selections easier and more user friendly
-# todo: add a flag to disable fzf somehow
+# General functions for all diary functions
+choice() {
+	echo -e -n "${BLUE}${1} (y/n)${NC}: " >&2
+	read -r CHOICE
+	echo "${CHOICE}"
+}
 
 # Diary functions
 
 # Create a new diary with the given name (or ask for a name if none is given)
+
+select_diary() {
+	if [[ -n ${FZF_INSTALLED} ]]; then
+		debug "fzf installed, using fzf" >&2
+		RESULT=$(printf "%s\n" "${DIARY_LIST[@]}" | fzf --prompt="Select a diary: ") # Use fzf to select a diary
+		echo "${RESULT}"
+	else
+		debug "fzf not installed, using select" >&2
+		PS3="Select a diary: "
+		CHOICES=("${DIARY_LIST[@]}" "Quit")
+		select opt in "${CHOICES[@]}"; do
+			if [[ ${opt} == "Quit" ]]; then
+				echo "You chose to quit." >&2
+				exit 0
+			elif [[ -z ${opt} ]]; then
+				echo "Invalid option. Please try again." >&2
+			else
+				echo "You chose: ${opt}" >&2
+				echo "${opt}"
+				break
+			fi
+		done
+	fi
+}
+
+select_page() {
+	FIND_PAGES=$(find "${DIARY_DIR}/${1}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$") # Find all diaries in the diary directory
+
+	debug "${DIARY_DIR}/${1}/pages" >&2
+
+	if [[ -n ${FZF_INSTALLED} ]]; then
+		debug "fzf installed, using fzf" >&2
+		RESULT=$(printf "%s\n" "${PAGE_LIST[@]}" | fzf --prompt="Select a page: ") # Use fzf to select a page
+	else
+		debug "fzf not installed, using select" >&2
+		while true; do
+			readarray -t PAGE_LIST <<<"${FIND_PAGES}"
+			debug "Found pages: ${PAGE_LIST[*]}" >&2
+			PS3="Select a page: "
+			CHOICES=("${PAGE_LIST[@]}" "New Page" "Quit")
+			select opt in "${CHOICES[@]}"; do
+				if [[ ${opt} == "Quit" ]]; then
+					echo "You chose to quit." >&2
+					IWANTTOQUIT=1
+					echo "Quit"
+					break
+				elif [[ ${opt} == "New Page" ]]; then
+					echo "You chose to create a new page." >&2
+					touch "${DIARY_DIR}/${1}/pages/page$((${#PAGE_LIST[@]} + 1)).md"
+					break
+				elif [[ -z ${opt} ]]; then
+					echo "Invalid option. Please try again." >&2
+				else
+					echo "You chose: ${opt}" >&2
+					echo "${opt}"
+					break
+				fi
+			done
+			if [[ -v IWANTTOQUIT ]]; then
+				break
+			fi
+		done
+	fi
+}
+
 new_diary() {
-	if [[ $# -lt 2 ]]; then
+	if [[ -z $2 ]]; then
 		warn "No diary name given"
 		echo -e -n "${BLUE}Enter diary name${NC}: "
 		read -r DIARY_NAME
@@ -89,11 +162,12 @@ new_diary() {
 	fi
 
 	local NEW_DIARY="${DIARY_DIR}/${DIARY_NAME}"
+	local DECISION
 	if [[ -d ${NEW_DIARY} ]]; then
 		error "Diary already exists at \"${NEW_DIARY}\", please choose a different name"
 		exit 1
 	else
-		if [[ $# -lt 3 ]]; then
+		if [[ -z $3 ]]; then
 			local info_message='No page name given, using "page1"'
 			PAGE_NAME="page1"
 		else
@@ -102,11 +176,15 @@ new_diary() {
 		fi
 
 		info "${info_message}"
-		mkdir -p "${NEW_DIARY}"                                     # Create the diary directory
-		mkdir -p "${NEW_DIARY}/pages"                               # Create the pages directory
-		echo -e "# ${PAGE_NAME}\n" >>"${NEW_DIARY}/${PAGE_NAME}.md" # Create the first page and add a title
+		mkdir -p "${NEW_DIARY}"                                           # Create the diary directory
+		mkdir -p "${NEW_DIARY}/pages"                                     # Create the pages directory
+		echo -e "# ${PAGE_NAME}\n" >>"${NEW_DIARY}/pages/${PAGE_NAME}.md" # Create the first page and add a title
 		debug "Created page \"${NEW_DIARY}/pages/${PAGE_NAME}.md\""
 		success "Created diary \"${DIARY_NAME}\""
+		DECISION=$(choice "Do you want to edit the diary now?")
+		if [[ ${DECISION} == "y" ]]; then
+			edit_diary "${DIARY_NAME}"
+		fi
 	fi
 }
 
@@ -115,42 +193,84 @@ default_diary() {
 }
 
 list_diaries() {
-	if [[ -z ${FZF_INSTALLED} ]]; then
-		RESULT=$(printf "%s\n" "${DIARY_LIST[@]}" | fzf --prompt="Select a diary: ") # Use fzf to select a diary
-	else
-		RESULT="${DIARY_LIST[*]}"
-	fi
-
 	if [[ -z ${RESULT} ]]; then
 		error "No diary selected"
 		exit 1
 	else
 		info "Selected diary \"${RESULT}\""
-		local ACTIONS=("edit" "make default" "rename" "delete")
-		if [[ -v ${FZF} ]]; then
+		local ACTIONS=("edit" "make default" "rename" "delete" "cancel")
+		if [[ -n ${FZF_INSTALLED} ]]; then
 			ACTION=$(printf "%s\n" "${ACTIONS[@]}" | fzf --prompt="Select an action: ")
 			case ${ACTION} in
 			"edit")
+				debug 'Selected "edit"'
 				edit_diary "${RESULT}"
 				;;
 			"make default")
+				debug 'Selected "make default"'
 				default_diary "${RESULT}"
 				;;
 			"rename")
+				debug 'Selected "rename"'
 				rename_diary "${RESULT}"
 				;;
 			"delete")
+				debug 'Selected "delete"'
 				delete_diary "${RESULT}"
+				;;
+			"cancel")
+				info "Cancelled, exiting..."
+				debug 'Exiting with code 0, selected "cancel"'
+				exit 0
 				;;
 			*)
 				error "Invalid action \"${ACTION}\""
 				exit 1
 				;;
 			esac
-		else
-			ACTION="edit"
 		fi
 	fi
+}
+
+edit_diary() {
+	local EDITOR_CHOICE
+	if [[ -z $2 ]]; then
+		warn "No diary name given, using default diary"
+		if [[ -z ${DEFAULT_DIARY} ]]; then
+			warn "No default diary set, select a diary"
+			DIARY_NAME=$(select_diary)
+			if [[ ${DIARY_NAME} == "Quit" ]]; then
+				info "Cancelled, exiting..."
+				debug 'Exiting with code 0, selected "cancel"'
+				exit 0
+			fi
+		else
+			DIARY_NAME=$(default_diary)
+		fi
+	else
+		DIARY_NAME=$2
+	fi
+	if [[ -z ${EDITOR} ]]; then
+		warn "No editor set"
+		EDITOR_CHOICE=$(choice "Do you want to set an editor now?, if not, the default editor will be nano")
+		if [[ ${EDITOR_CHOICE} == "y" ]]; then
+			echo -e -n "${BLUE}Enter editor${NC}: "
+			read -r EDITOR
+			echo export EDITOR="${EDITOR}" >>~/.bashrc
+			echo export EDITOR="${EDITOR}" >>~/.zshrc
+		else
+			echo export EDITOR="nano" >>~/.bashrc
+			echo export EDITOR="nano" >>~/.zshrc
+		fi
+	fi
+	debug "Using editor \"${EDITOR}\""
+	PAGE=$(select_page "${DIARY_NAME}")
+	if [[ ${PAGE} == "Quit" ]]; then
+		info "Cancelled, exiting..."
+		debug 'Exiting with code 0, selected "Quit"'
+		exit 0
+	fi
+	${EDITOR} "${PAGE}"
 }
 
 write_help() {
@@ -177,6 +297,7 @@ write_help() {
 	echo -e "Optional arguments: \n"
 	echo -e "${RED}--no-fzf, -f${NC} \t\t\t | \t${CYAN}Disables fzf${NC}"
 }
+
 case $1 in
 "new" | "n" | "--new" | "-n" | "create" | "c" | "--create" | "-c" | "add" | "a" | "--add" | "-a" | "make" | "m" | "--make" | "-m" | "-yes")
 	new_diary "${@}"
@@ -188,7 +309,7 @@ case $1 in
 	list_diaries "${@}"
 	;;
 "edit" | "e" | "--edit" | "-e")
-	echo "edit diary"
+	edit_diary "${@}"
 	;;
 "delete" | "del" | "rm" | "remove" | "--delete" | "-del" | "-rm" | "--remove" | "-no")
 	echo "delete diary"
