@@ -58,6 +58,7 @@ ctrl_c() {
 }
 
 trap ctrl_c INT
+trap 'exit 0;' EXIT
 
 # Preliminary checks
 
@@ -84,11 +85,39 @@ choice() {
 	echo "${CHOICE}"
 }
 
+find_rc() {
+	if [[ -f "${HOME}/.bashrc" ]]; then
+		echo "${HOME}/.bashrc"
+	elif [[ -f "${HOME}/.zshrc" ]]; then
+		echo "${HOME}/.zshrc"
+	else
+		error "No rc file found" >&2
+		exit 1
+	fi
+}
+
+replace_or_append_editor() {
+	local file
+	file=$(find_rc)
+	local line="export EDITOR"
+	local replacement="export EDITOR=\"${EDITOR}\""
+
+	if grep -Fxq "${line}" "${file}"; then
+		# The line exists in the file, replace it.
+		sed -i "s/^${line}$/${replacement}/" "${file}"
+	else
+		# The line does not exist in the file, append it.
+		echo "${replacement}" >>"${file}"
+	fi
+}
+
 # Diary functions
 
 # Create a new diary with the given name (or ask for a name if none is given)
 
 select_diary() {
+	FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$") # Find all diaries in the diary directory
+	readarray -t DIARY_LIST <<<"${FIND_RESULT}"
 	if [[ -n ${FZF_INSTALLED} ]]; then
 		debug "fzf installed, using fzf" >&2
 		RESULT=$(printf "%s\n" "${DIARY_LIST[@]}" | fzf --prompt="Select a diary: ") # Use fzf to select a diary
@@ -100,6 +129,7 @@ select_diary() {
 		select opt in "${CHOICES[@]}"; do
 			if [[ ${opt} == "Quit" ]]; then
 				echo "You chose to quit." >&2
+				echo "Quit"
 				exit 0
 			elif [[ -z ${opt} ]]; then
 				echo "Invalid option. Please try again." >&2
@@ -122,30 +152,24 @@ select_page() {
 		RESULT=$(printf "%s\n" "${PAGE_LIST[@]}" | fzf --prompt="Select a page: ") # Use fzf to select a page
 	else
 		debug "fzf not installed, using select" >&2
-		while true; do
-			readarray -t PAGE_LIST <<<"${FIND_PAGES}"
-			debug "Found pages: ${PAGE_LIST[*]}" >&2
-			PS3="Select a page: "
-			CHOICES=("${PAGE_LIST[@]}" "New Page" "Quit")
-			select opt in "${CHOICES[@]}"; do
-				if [[ ${opt} == "Quit" ]]; then
-					echo "You chose to quit." >&2
-					IWANTTOQUIT=1
-					echo "Quit"
-					break
-				elif [[ ${opt} == "New Page" ]]; then
-					echo "You chose to create a new page." >&2
-					touch "${DIARY_DIR}/${1}/pages/page$((${#PAGE_LIST[@]} + 1)).md"
-					break
-				elif [[ -z ${opt} ]]; then
-					echo "Invalid option. Please try again." >&2
-				else
-					echo "You chose: ${opt}" >&2
-					echo "${opt}"
-					break
-				fi
-			done
-			if [[ -v IWANTTOQUIT ]]; then
+		readarray -t PAGE_LIST <<<"${FIND_PAGES}"
+		debug "Found pages: ${PAGE_LIST[*]}" >&2
+		PS3="Select a page: "
+		CHOICES=("${PAGE_LIST[@]}" "New Page" "Quit")
+		select opt in "${CHOICES[@]}"; do
+			if [[ ${opt} == "Quit" ]]; then
+				echo "You chose to quit." >&2
+				echo "Quit"
+				exit 0
+			elif [[ ${opt} == "New Page" ]]; then
+				echo "You chose to create a new page." >&2
+				touch "${DIARY_DIR}/${1}/pages/page$((${#PAGE_LIST[@]} + 1)).md"
+				break
+			elif [[ -z ${opt} ]]; then
+				echo "Invalid option. Please try again." >&2
+			else
+				echo "You chose: ${opt}" >&2
+				echo "${opt}"
 				break
 			fi
 		done
@@ -239,18 +263,18 @@ edit_diary() {
 		if [[ -z ${DEFAULT_DIARY} ]]; then
 			warn "No default diary set, select a diary"
 			DIARY_NAME=$(select_diary)
-			if [[ ${DIARY_NAME} == "Quit" ]]; then
-				info "Cancelled, exiting..."
-				debug 'Exiting with code 0, selected "cancel"'
-				exit 0
-			fi
+			info "Selected diary \"${DIARY_NAME}\""
 		else
 			DIARY_NAME=$(default_diary)
 		fi
 	else
 		DIARY_NAME=$2
 	fi
-	if [[ -z ${EDITOR} ]]; then
+	if [[ ${DIARY_NAME} == "Quit" ]]; then
+		info "Cancelled, exiting..."
+		debug 'Exiting with code 0, selected "cancel"'
+		exit 0
+	elif [[ -z ${EDITOR} ]]; then
 		warn "No editor set"
 		EDITOR_CHOICE=$(choice "Do you want to set an editor now?, if not, the default editor will be nano")
 		if [[ ${EDITOR_CHOICE} == "y" ]]; then
@@ -264,13 +288,15 @@ edit_diary() {
 		fi
 	fi
 	debug "Using editor \"${EDITOR}\""
-	PAGE=$(select_page "${DIARY_NAME}")
-	if [[ ${PAGE} == "Quit" ]]; then
-		info "Cancelled, exiting..."
-		debug 'Exiting with code 0, selected "Quit"'
-		exit 0
-	fi
-	${EDITOR} "${PAGE}"
+	while true; do
+		PAGE=$(select_page "${DIARY_NAME}")
+		if [[ ${PAGE} == "Quit" ]]; then
+			info "Cancelled, exiting..."
+			debug 'Exiting with code 0, selected "Quit"'
+			exit 0
+		fi
+		${EDITOR} "${PAGE}"
+	done
 }
 
 write_help() {
