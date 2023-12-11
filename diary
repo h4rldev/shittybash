@@ -19,35 +19,35 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Error, success, info, debug and warning messages
-error() {
+error() { # Error messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${RED}ERROR${NC}] ${1}"
 }
 
-success() {
+success() { # Success messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${GREEN}SUCCESS${NC}] ${1}"
 }
 
-info() {
+info() { # Info messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
 	echo -e "[${CYAN}INFO${NC}] ${1}"
 }
 
-debug() {
+debug() { # Debug messages
 	if ! [[ -v ${DEBUG} ]]; then
 		return
 	fi
 	echo -e "[${BLUE}DEBUG${NC}] ${1}"
 }
 
-warn() {
+warn() { # Warning messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
@@ -56,13 +56,13 @@ warn() {
 
 # Trap ctrl-c and call ctrl_c()
 ctrl_c() {
-	echo -e "\nCaught ${GREEN}CTRL-C${NC}, aborting..."
+	echo -e "\nCaught ${GREEN}CTRL-C${NC}, aborting..." # Exit with code 0 gracefully if the user presses ctrl-c
 	exit 1
 }
 
 backup_on_exit() {
-	if [[ ${BACKUP_ON_EXIT} == 1 ]]; then
-		backup_everything "-y"
+	if [[ ${BACKUP_ON_EXIT} == 1 ]]; then # Check if the user wants to backup all diaries on exit
+		backup_everything "-y"               # Backup all diaries with the -y flag to skip the confirmation
 	fi
 	exit 0
 }
@@ -79,14 +79,14 @@ FZF_INSTALLED=$(command -v fzf)
 if ! cat "${DIARY_DIR}/.default_diary" >/dev/null 2>&1; then
 	info "No default diary set"
 else
-	DEFAULT_DIARY=$(cat "${DIARY_DIR}/.default_diary")
+	DEFAULT_DIARY=$(cat "${DIARY_DIR}/.default_diary") # Set the default diary to the diary in the .default_diary file
 fi
 
 # Check if diary directory exists
 if [[ ! -d ${DIARY_DIR} ]]; then
 	warn "Diary directory not found, creating one"
-	info "Created diary directory at \"${DIARY_DIR}\""
 	mkdir -p "${DIARY_DIR}"
+	info "Created diary directory at \"${DIARY_DIR}\""
 fi
 
 # General functions for all diary functions
@@ -98,7 +98,7 @@ choice() {
 	echo "${CHOICE}"
 }
 
-# Find the rc file
+# Find the rc file by checking the shell, currently only supports bash and zsh
 find_rc() {
 	if [[ ${SHELL} == *"bash" ]]; then
 		echo "${HOME}/.bashrc"
@@ -117,74 +117,42 @@ replace_or_append_editor() {
 	local line="export EDITOR"
 	local replacement="export EDITOR=\"${EDITOR}\""
 
-	if grep -Fxq "${line}" "${file}"; then
+	if grep -Fxq "${line}" "${file}"; then # Check if the line exists in the file
 		# The line exists in the file, replace it.
-		sed -i "s/^${line}$/${replacement}/" "${file}"
+		sed -i "s/^${line}$/${replacement}/" "${file}" # Replace the line
 	else
 		# The line does not exist in the file, append it.
-		echo "${replacement}" >>"${file}"
-	fi
-}
-
-rename_diary() {
-	local DIARY_TO_RENAME
-	local NEW_DIARY_NAME
-	if [[ -z $2 ]]; then
-		if [[ $1 == "rename" ]]; then
-			warn "No diary name given from any other function"
-			DIARY_TO_RENAME=$(select_diary)
-			info "Selected diary \"${DIARY_TO_RENAME}\""
-		else
-			DIARY_TO_RENAME=$1
-		fi
-	else
-		DIARY_TO_RENAME=$2
-	fi
-	if [[ ${DIARY_TO_RENAME} == "Quit" ]]; then
-		info "Cancelled, exiting..."
-		debug 'Exiting with code 0, selected "cancel"'
-		exit 0
-	else
-		echo -e -n "${BLUE}Enter new diary name${NC}: "
-		read -r NEW_DIARY_NAME
-		local NEW_DIARY="${DIARY_DIR}/${NEW_DIARY_NAME}"
-		if [[ -d ${NEW_DIARY} ]]; then
-			error "Diary already exists at \"${NEW_DIARY}\", please choose a different name"
-			exit 1
-		else
-			mv "${DIARY_DIR}/${DIARY_TO_RENAME}" "${DIARY_DIR}/${NEW_DIARY_NAME}"
-			success "Renamed diary \"${DIARY_TO_RENAME}\" to \"${NEW_DIARY_NAME}\""
-		fi
+		echo "${replacement}" >>"${file}" # Append the line
 	fi
 }
 
 select_in_list() {
 	local new_input_list
 	local new_list
-	local list=(${@:1:$#-1})
-	local prompt="${*: -1}"
+	local list=(${@:1:$#-1}) # Get all but the last argument
+	local prompt="${*: -1}"  # Get the last argument
 
-	new_input_list=($(for i in "${list[@]}"; do echo "$i" | sed -e 's/\(.*\)\([0-9]\+\)\(.*\)/\2 \0/'; done | sort -n -k1,1 | cut -d' ' -f2-))
-	new_list=("New" ${new_input_list[@]} "Quit")
+	new_input_list=($(for i in "${list[@]}"; do echo "$i" | sed -e 's/\(.*\)\([0-9]\+\)\(.*\)/\2 \0/'; done | sort -n -k1,1 | cut -d' ' -f2-)) # Sort the list from 1 and up
+	new_list=("New" ${new_input_list[@]} "Quit")                                                                                               # Add "New" and "Quit" to the list
 
 	if [[ -n ${FZF_INSTALLED} ]]; then
-		debug "fzf installed, using fzf" >&2
+		debug "fzf installed, using fzf" >&2                                                             # If fzf is installed, use fzf
 		RESULT=$(printf "%s\n" "${new_list[@]}" | fzf --layout=reverse --no-sort --prompt="${prompt}: ") # Use fzf to select a diary
 	else
-		debug "fzf not installed, using select" >&2
+		debug "fzf not installed, using select" >&2 # If fzf is not installed, use select
 		PS3="${prompt}: "
 		select opt in "${list[@]}"; do
-			if [[ ${opt} == "Quit" ]]; then
+			if [[ ${opt} == "Quit" ]]; then # Check if the user chose to quit
 				echo "You chose to quit." >&2
 				RESULT="Quit"
 				exit 0
-			elif [[ ${opt} == "New" ]]; then
+			elif [[ ${opt} == "New" ]]; then # Check if the user chose to create a new diary
 				RESULT="New"
 				break
 			elif [[ -z ${opt} ]]; then
-				echo "Invalid option. Please try again." >&2
+				echo "Invalid option. Please try again." >&2 # Check if the user chose an invalid option
 			else
-				echo "You chose: ${opt}" >&2
+				echo "You chose: ${opt}" >&2 # Check if the user chose a diary
 				RESULT=${opt}
 				break
 			fi
@@ -195,25 +163,63 @@ select_in_list() {
 
 # Diary functions
 
-# Create a new diary with the given name (or ask for a name if none is given)
+# Select a diary from the diary directory
 
 select_diary() {
-	FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$")
-	readarray -t DIARY_LIST <<<"${FIND_RESULT}"
-	select_in_list "${DIARY_LIST[*]}" "Select diary"
+	FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$") # Find all diaries
+	readarray -t DIARY_LIST <<<"${FIND_RESULT}"                                                                    # Put all diaries in an array
+	select_in_list "${DIARY_LIST[*]}" "Select diary"                                                               # Select a diary
 }
+
+# Select a page from the given diary (or ask for a diary if none is given)
 
 select_page() {
-	FIND_PAGES=$(find "${DIARY_DIR}/${1}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$")
-	readarray -t PAGE_LIST <<<"${FIND_PAGES}"
-	select_in_list "${PAGE_LIST[*]}" "Select page"
+	FIND_PAGES=$(find "${DIARY_DIR}/${1}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$") # Find all pages
+	readarray -t PAGE_LIST <<<"${FIND_PAGES}"                                                                           # Put all pages in an array
+	select_in_list "${PAGE_LIST[*]}" "Select page"                                                                      # Select a page
 }
 
+# Rename the given diary (or ask for a diary if none is given)
+
+rename_diary() {
+	local DIARY_TO_RENAME
+	local NEW_DIARY_NAME
+	if [[ -z $2 ]]; then           # check if a diary name was given
+		if [[ $1 == "rename" ]]; then # check if the function was called from another function
+			warn "No diary name given from any other function"
+			DIARY_TO_RENAME=$(select_diary)
+			info "Selected diary \"${DIARY_TO_RENAME}\""
+		else
+			DIARY_TO_RENAME=$1
+		fi
+	else
+		DIARY_TO_RENAME=$2
+	fi
+	if [[ ${DIARY_TO_RENAME} == "Quit" ]]; then # check if the user chose to quit
+		info "Cancelled, exiting..."
+		debug 'Exiting with code 0, selected "cancel"'
+		exit 0
+	else
+		echo -e -n "${BLUE}Enter new diary name${NC}: " # Ask the user for a new diary name
+		read -r NEW_DIARY_NAME
+		local NEW_DIARY="${DIARY_DIR}/${NEW_DIARY_NAME}" # The new diary directory
+		if [[ -d ${NEW_DIARY} ]]; then                   # Check if the diary already exists
+			error "Diary already exists at \"${NEW_DIARY}\", please choose a different name"
+			exit 1
+		else
+			mv "${DIARY_DIR}/${DIARY_TO_RENAME}" "${DIARY_DIR}/${NEW_DIARY_NAME}" # Rename the diary
+			success "Renamed diary \"${DIARY_TO_RENAME}\" to \"${NEW_DIARY_NAME}\""
+		fi
+	fi
+}
+
+# Create a new diary with the given name (or ask for a name if none is given) but smaller with less checks
+
 new_diary_small() {
-	echo -e -n "${BLUE}Enter diary name${NC}: " >&2
+	echo -e -n "${BLUE}Enter diary name${NC}: " >&2 # Ask the user for a diary name
 	read -r DIARY_NAME
 	local NEW_DIARY="${DIARY_DIR}/${DIARY_NAME}"
-	if [[ -d ${NEW_DIARY} ]]; then
+	if [[ -d ${NEW_DIARY} ]]; then # Check if the diary already exists
 		error "Diary already exists at \"${NEW_DIARY}\", please choose a different name" >&2
 		echo "Quit"
 	else
@@ -224,8 +230,10 @@ new_diary_small() {
 	fi
 }
 
+# Create a new diary with the given name (or ask for a name if none is given)
+
 new_diary() {
-	if [[ -z $2 ]]; then
+	if [[ -z $2 ]]; then # Check if a diary name was given
 		warn "No diary name given"
 		echo -e -n "${BLUE}Enter diary name${NC}: "
 		read -r DIARY_NAME
@@ -233,9 +241,9 @@ new_diary() {
 		DIARY_NAME=$2
 	fi
 
-	local NEW_DIARY="${DIARY_DIR}/${DIARY_NAME}"
+	local NEW_DIARY="${DIARY_DIR}/${DIARY_NAME}" # The new diary directory
 	local DECISION
-	if [[ -d ${NEW_DIARY} ]]; then
+	if [[ -d ${NEW_DIARY} ]]; then # Check if the diary already exists
 		error "Diary already exists at \"${NEW_DIARY}\", please choose a different name"
 		exit 1
 	else
@@ -243,29 +251,31 @@ new_diary() {
 		echo -e "# page1\n" >"${NEW_DIARY}/pages/page1.md" # Create the first page and add a title
 		debug "Created page \"${NEW_DIARY}/pages/page1.md\""
 		success "Created diary \"${DIARY_NAME}\""
-		DECISION=$(choice "Do you want to edit the diary now?")
+		DECISION=$(choice "Do you want to edit the diary now?") # Ask the user if they want to edit the diary
 		if [[ ${DECISION} == "y" ]]; then
-			edit_diary "${DIARY_NAME}"
+			edit_diary "${DIARY_NAME}" # Edit the diary
 		fi
 	fi
 }
+
+# Set the default diary to the given diary (or ask for a diary if none is given)
 
 default_diary() {
 	local NEW_DEFAULT_DIARY
 	local DEFAULT_DIARY_DECISION
 	local FINAL_DEFAULT_DIARY_DECISION
 
-	if [[ -n ${DEFAULT_DIARY} ]]; then
+	if [[ -n ${DEFAULT_DIARY} ]]; then # Check if a default diary is set
 		echo "Default diary is set to \"${DEFAULT_DIARY}\""
-		DEFAULT_DIARY_DECISION=$(choice "Do you want to change the default diary?")
+		DEFAULT_DIARY_DECISION=$(choice "Do you want to change the default diary?") # Ask the user if they want to change the default diary
 		if [[ ${DEFAULT_DIARY_DECISION} == "n" ]]; then
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
 	fi
 
-	if [[ -z $2 ]]; then
-		if [[ $1 == "default" ]]; then
+	if [[ -z $2 ]]; then            # Check if a diary name was given
+		if [[ $1 == "default" ]]; then # Check if the function was called from another function
 			NEW_DEFAULT_DIARY=$(select_diary)
 			if [[ ${NEW_DEFAULT_DIARY} == "Quit" ]]; then
 				info "Cancelled, exiting..."
@@ -279,43 +289,45 @@ default_diary() {
 		NEW_DEFAULT_DIARY=$2
 	fi
 
-	FINAL_DEFAULT_DIARY_DECISION=$(choice "Are you sure you want to set the default diary to \"${NEW_DEFAULT_DIARY}\"?")
+	FINAL_DEFAULT_DIARY_DECISION=$(choice "Are you sure you want to set the default diary to \"${NEW_DEFAULT_DIARY}\"?") # Ask the user if they are sure they want to set the default diary
 	if [[ ${FINAL_DEFAULT_DIARY_DECISION} == "n" ]]; then
 		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
-		echo "${NEW_DEFAULT_DIARY}" >"${DIARY_DIR}/.default_diary"
+		echo "${NEW_DEFAULT_DIARY}" >"${DIARY_DIR}/.default_diary" # Set the default diary
 		success "Set default diary to \"${NEW_DEFAULT_DIARY}\""
 	fi
 
 }
 
+# List all diaries and allow the user to choose which to rename, edit, delete and make default
+
 list_diaries() {
 	local NEW_DIARY_STATUS
-	if [[ -z ${2} ]]; then
-		RESULT=$(select_diary)
+	if [[ -z ${2} ]]; then  # Check if a diary name was given
+		RESULT=$(select_diary) # Select a diary
 		if [[ ${RESULT} == "New" ]]; then
-			NEW_DIARY_STATUS=$(new_diary_small)
+			NEW_DIARY_STATUS=$(new_diary_small) # Create a new diary
 		fi
 	fi
 
-	if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then
+	if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then # Check if the user chose to quit
 		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	fi
 
-	if [[ ${RESULT} == "Quit" ]]; then
+	if [[ ${RESULT} == "Quit" ]]; then # Check if the user chose to quit
 		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
 		info "Selected diary \"${RESULT}\""
-		local ACTIONS=("Edit" "Rename" "Make default" "Delete" "Cancel")
-		if [[ -n ${FZF_INSTALLED} ]]; then
-			ACTION=$(printf "%s\n" "${ACTIONS[@]}" | fzf --layout=reverse --prompt="Select an action: ")
-			case ${ACTION} in
+		local ACTIONS=("Edit" "Rename" "Make default" "Delete" "Cancel")                              # The actions to choose from
+		if [[ -n ${FZF_INSTALLED} ]]; then                                                            # If fzf is installed, use fzf
+			ACTION=$(printf "%s\n" "${ACTIONS[@]}" | fzf --layout=reverse --prompt="Select an action: ") # Use fzf to select an action
+			case ${ACTION} in                                                                            # Check which action was selected and call the appropriate function
 			"Edit")
 				debug 'Selected "edit"'
 				edit_diary "${RESULT}"
@@ -344,8 +356,8 @@ list_diaries() {
 			esac
 		else # If fzf is not installed, use select
 			PS3="Select an action: "
-			select opt in "${ACTIONS[@]}"; do
-				case ${opt} in
+			select opt in "${ACTIONS[@]}"; do # Use select to select an action
+				case ${opt} in                   # Check which action was selected and call the appropriate function
 				"Edit")
 					debug 'Selected "edit"'
 					edit_diary "${RESULT}"
@@ -377,23 +389,16 @@ list_diaries() {
 	fi
 }
 
+# Edit the given diary (or ask for a diary if none is given)
+
 edit_diary() {
-	local EDITOR_CHOICE  # The user's choice of editor
-	if [[ -z $2 ]]; then # Check if a diary name was given
-		if [[ $1 == "edit" ]]; then
+	local EDITOR_CHOICE          # The user's choice of editor
+	if [[ -z $2 ]]; then         # Check if a diary name was given
+		if [[ $1 == "edit" ]]; then # Check if the function was called from another function
 			warn "No diary name given from any other function, checking for default diary"
-			if [[ -z ${DEFAULT_DIARY} ]]; then
+			if [[ -z ${DEFAULT_DIARY} ]]; then # Check if a default diary is set
 				warn "No default diary set, select a diary"
 				DIARY_NAME=$(select_diary)
-				if [[ ${DIARY_NAME} == "New" ]]; then
-					local NEW_DIARY_STATUS
-					NEW_DIARY_STATUS=$(new_diary_small)
-					if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then
-						info "Cancelled, exiting..."
-						debug 'Exiting with code 0, selected "cancel"'
-						exit 0
-					fi
-				fi
 			else
 				DIARY_NAME=${DEFAULT_DIARY}
 			fi
@@ -403,47 +408,58 @@ edit_diary() {
 	else
 		DIARY_NAME=$2
 	fi
+	if [[ ${DIARY_NAME} == "New" ]]; then # Check if the user chose to create a new diary
+		local NEW_DIARY_STATUS
+		NEW_DIARY_STATUS=$(new_diary_small)          # Create a new diary
+		if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then # Check if the user chose to quit
+			info "Cancelled, exiting..."
+			debug 'Exiting with code 0, selected "cancel"'
+			exit 0
+		fi
+	fi
 	debug "Using diary \"${DIARY_NAME}\""
-	if [[ ${DIARY_NAME} == "Quit" ]]; then
+	if [[ ${DIARY_NAME} == "Quit" ]]; then # Check if the user chose to quit
 		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	elif [[ -z ${EDITOR} ]]; then # Check if an editor is set
 		warn "No editor set"
 		EDITOR_CHOICE=$(choice "Do you want to set an editor now?, if not, the default editor will be nano")
-		if [[ ${EDITOR_CHOICE} == "y" ]]; then
+		if [[ ${EDITOR_CHOICE} == "y" ]]; then # Check if the user wants to set an editor
 			echo -e -n "${BLUE}Enter editor${NC}: "
 			read -r EDITOR
 		else
-			EDITOR="vim"
+			EDITOR="vim" # else Set the default editor to vim
 		fi
 		replace_or_append_editor
 	fi
 	debug "Using editor \"${EDITOR}\""
-	while true; do
-		FIND_PAGES=$(find "${DIARY_DIR}/${DIARY_NAME}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$")
-		readarray -t PAGE_LIST <<<"${FIND_PAGES}"
-		PAGE=$(select_page "${DIARY_NAME}")
-		if [[ ${PAGE} == "Quit" ]]; then
+	while true; do                                                                                                                # Loop until the user chooses to quit
+		FIND_PAGES=$(find "${DIARY_DIR}/${DIARY_NAME}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$") # Find all pages
+		readarray -t PAGE_LIST <<<"${FIND_PAGES}"                                                                                    # Put all pages in an array
+		PAGE=$(select_page "${DIARY_NAME}")                                                                                          # Select a page
+		if [[ ${PAGE} == "Quit" ]]; then                                                                                             # Check if the user chose to quit
 			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "Quit"'
 			exit 0
-		elif [[ ${PAGE} == "New" ]]; then
+		elif [[ ${PAGE} == "New" ]]; then # Check if the user chose to create a new page
 			info "Creating new page"
-			echo "# page$((${#PAGE_LIST[@]} + 1))" >"${DIARY_DIR}/${DIARY_NAME}/pages/page$((${#PAGE_LIST[@]} + 1)).md"
-			PAGE="${DIARY_DIR}/${DIARY_NAME}/pages/page$((${#PAGE_LIST[@]} + 1)).md"
+			echo "# page$((${#PAGE_LIST[@]} + 1))" >"${DIARY_DIR}/${DIARY_NAME}/pages/page$((${#PAGE_LIST[@]} + 1)).md" # Create a new page with the correct name and add a title
+			PAGE="${DIARY_DIR}/${DIARY_NAME}/pages/page$((${#PAGE_LIST[@]} + 1)).md"                                    # Set the page to the new page
 		else
-			PAGE="${DIARY_DIR}/${DIARY_NAME}/pages/${PAGE}"
+			PAGE="${DIARY_DIR}/${DIARY_NAME}/pages/${PAGE}" # Set the page to the selected page
 		fi
 		info "Editing page \"${PAGE}\""
-		${EDITOR} "${PAGE}"
+		${EDITOR} "${PAGE}" # Edit the page
 	done
 }
 
+# Delete the given diary (or ask for a diary if none is given)
+
 delete_diary() {
 	local DIARY_TO_DELETE
-	if [[ -z $2 ]]; then
-		if [[ $1 == "delete" ]]; then
+	if [[ -z $2 ]]; then           # check if a diary name was given
+		if [[ $1 == "delete" ]]; then # check if the function was called from another function
 			warn "No diary name given from any other function"
 			DIARY_TO_DELETE=$(select_diary)
 			info "Selected diary \"${DIARY_TO_DELETE}\""
@@ -453,15 +469,15 @@ delete_diary() {
 	else
 		DIARY_TO_DELETE=$2
 	fi
-	if [[ ${DIARY_TO_DELETE} == "Quit" ]]; then
+	if [[ ${DIARY_TO_DELETE} == "Quit" ]]; then # check if the user chose to quit
 		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
 		local DELETE_DECISION
-		DELETE_DECISION=$(choice "Are you sure you want to delete \"${DIARY_TO_DELETE}\"?")
+		DELETE_DECISION=$(choice "Are you sure you want to delete \"${DIARY_TO_DELETE}\"?") # Ask the user if they are sure they want to delete the diary
 		if [[ ${DELETE_DECISION} == "y" ]]; then
-			rm -rf "${DIARY_DIR:?}/${DIARY_TO_DELETE}"
+			rm -rf "${DIARY_DIR:?}/${DIARY_TO_DELETE}" # Delete the diary
 			success "Deleted diary \"${DIARY_TO_DELETE}\""
 		else
 			info "Cancelled, exiting..."
@@ -471,7 +487,11 @@ delete_diary() {
 	fi
 }
 
+# Clean up the diary directory
+
 clean_diaries() {
+
+	# The questions to ask the user, i know this is a bit silly but i like it
 	local QUESTIONS=(
 		"Are you sure you want to clean up the diary directory?"
 		"Are you sure you want to delete everything?"
@@ -481,30 +501,32 @@ clean_diaries() {
 		"Are you really really really really sure you want to delete absolutely everything?????"
 	)
 
-	for question in "${QUESTIONS[@]}"; do
-		CLEAN_DECISION=$(choice "${question}")
-		if [[ ${CLEAN_DECISION} != "y" ]]; then
+	for question in "${QUESTIONS[@]}"; do    # Loop through all questions
+		CLEAN_DECISION=$(choice "${question}")  # Ask the user if they are sure they want to clean up the diary directory
+		if [[ ${CLEAN_DECISION} != "y" ]]; then # Check if the user chose to cancel
 			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
 	done
 
-	rm -rf "${DIARY_DIR}"
-	mkdir -p "${DIARY_DIR}"
+	rm -rf "${DIARY_DIR}"   # Delete the diary directory
+	mkdir -p "${DIARY_DIR}" # Create the diary directory again
 	success "Cleaned up diary directory"
 }
 
 # Backs up the given diary (or asks for a diary if none is given)
 
 backup_diary() {
-	mkdir -p "${HOME}/backups" # Create the backups directory
-	local DIARY_TO_BACKUP      # The diary to backup
-	if [[ -z $2 ]]; then       # check if a diary name was given
-		if [[ $1 == "backup" ]]; then
+	mkdir -p "${HOME}/backups"     # Create the backups directory
+	local DIARY_TO_BACKUP          # The diary to backup
+	if [[ -z $2 ]]; then           # check if a diary name was given
+		if [[ $1 == "backup" ]]; then # check if the function was called from another function
 			warn "No diary name given from any other function"
 			DIARY_TO_BACKUP=$(select_diary)
 			info "Selected diary \"${DIARY_TO_BACKUP}\""
+		else
+			DIARY_TO_BACKUP=$1
 		fi
 	else
 		DIARY_TO_BACKUP=$2
@@ -542,16 +564,16 @@ backup_everything() {
 	TIME=$(date +%H:%M:%S) # Get the time
 	for arg in "${@}"; do
 		if [[ ${arg} == *"-y"* ]]; then
-			BACKUP_DECISION="y"
+			BACKUP_DECISION="y" # If the user passed the -y flag, set the backup decision to yes
 		else
-			BACKUP_DECISION=$(choice "Are you sure you want to backup everything?")
+			BACKUP_DECISION=$(choice "Are you sure you want to backup everything?") # Else ask the user if they are sure they want to backup everything
 		fi
 	done
 	if [[ ${BACKUP_DECISION} == "y" ]]; then
-		FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$")
-		readarray -t DIARY_LIST <<<"${FIND_RESULT}"
-		for diary in "${DIARY_LIST[@]}"; do                                                                     # Loop through all diaries
-			tar -czvf "${HOME}/backups/${diary} - ${TIME}, ${DATE}.tar.gz" "${DIARY_DIR}/${diary}" >/dev/null 2>&1 # Backup the diary
+		FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$") # Find all diaries
+		readarray -t DIARY_LIST <<<"${FIND_RESULT}"                                                                    # Put all diaries in an array
+		for diary in "${DIARY_LIST[@]}"; do                                                                            # Loop through all diaries
+			tar -czvf "${HOME}/backups/${diary} - ${TIME}, ${DATE}.tar.gz" "${DIARY_DIR}/${diary}" >/dev/null 2>&1        # Backup the diary
 		done
 		success "Backed up everything"
 	else
@@ -608,6 +630,8 @@ write_help() {
 
 	echo -e "${RED}help, h, --help, -h, *${NC} \t\t | \t${CYAN}Shows this help message${NC} \n"
 }
+
+# Check for the first argument and call the appropriate function
 
 case $1 in
 "new" | "n" | "--new" | "-n" | "create" | "cr" | "--create" | "-cr" | "add" | "a" | "--add" | "-a" | "make" | "m" | "--make" | "-m" | "-yes")
