@@ -143,11 +143,11 @@ select_in_list() {
 	else
 		debug "fzf not installed, using select" >&2 # If fzf is not installed, use select
 		PS3="${prompt}: "
-		select opt in "${list[@]}"; do
+		select opt in "${new_list[@]}"; do
 			if [[ ${opt} == "Quit" ]]; then # Check if the user chose to quit
 				echo "You chose to quit." >&2
 				RESULT="Quit"
-				exit 0
+				break
 			elif [[ ${opt} == "New" ]]; then # Check if the user chose to create a new diary
 				RESULT="New"
 				break
@@ -280,7 +280,7 @@ default_diary() {
 		if [[ $1 == "default" ]]; then # Check if the function was called from another function
 			NEW_DEFAULT_DIARY=$(select_diary)
 			if [[ ${NEW_DEFAULT_DIARY} == "Quit" ]]; then
-				info "cancelled, exiting..."
+				info "Cancelled, exiting..."
 				debug 'Exiting with code 0, selected "cancel"'
 				exit 0
 			fi
@@ -293,7 +293,7 @@ default_diary() {
 
 	FINAL_DEFAULT_DIARY_DECISION=$(choice "Are you sure you want to set the default diary to \"${NEW_DEFAULT_DIARY}\"?") # Ask the user if they are sure they want to set the default diary
 	if [[ ${FINAL_DEFAULT_DIARY_DECISION} == "n" ]]; then
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -315,13 +315,13 @@ list_diaries() {
 	fi
 
 	if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then # Check if the user chose to quit
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	fi
 
 	if [[ ${RESULT} == "Quit" ]]; then # Check if the user chose to quit
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -347,7 +347,7 @@ list_diaries() {
 				delete_diary "${RESULT}"
 				;;
 			"cancel")
-				info "cancelled, exiting..."
+				info "Cancelled, exiting..."
 				debug 'Exiting with code 0, selected "cancel"'
 				exit 0
 				;;
@@ -377,7 +377,7 @@ list_diaries() {
 					delete_diary "${RESULT}"
 					;;
 				"cancel")
-					info "cancelled, exiting..."
+					info "Cancelled, exiting..."
 					debug 'Exiting with code 0, selected "cancel"'
 					exit 0
 					;;
@@ -414,19 +414,19 @@ edit_diary() {
 		local NEW_DIARY_STATUS
 		NEW_DIARY_STATUS=$(new_diary_small)          # Create a new diary
 		if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then # Check if the user chose to quit
-			info "cancelled, exiting..."
+			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
 	fi
 	debug "Using diary \"${DIARY_NAME}\""
 	if [[ ${DIARY_NAME} == "Quit" ]]; then # Check if the user chose to quit
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	elif [[ -z ${EDITOR} ]]; then # Check if an editor is set
 		warn "No editor set"
-		EDITOR_CHOICE=$(choice "Do you want to set an editor now?, if not, the default editor will be nano")
+		EDITOR_CHOICE=$(choice "Do you want to set an editor now?, if not, the default editor will be vim")
 		if [[ ${EDITOR_CHOICE} == "y" ]]; then # Check if the user wants to set an editor
 			echo -e -n "${BLUE}Enter editor${CLEAR}: "
 			read -r EDITOR
@@ -441,7 +441,7 @@ edit_diary() {
 		readarray -t PAGE_LIST <<<"${FIND_PAGES}"                                                                                    # Put all pages in an array
 		PAGE=$(select_page "${DIARY_NAME}")                                                                                          # Select a page
 		if [[ ${PAGE} == "Quit" ]]; then                                                                                             # Check if the user chose to quit
-			info "cancelled, exiting..."
+			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "Quit"'
 			exit 0
 		elif [[ ${PAGE} == "New" ]]; then # Check if the user chose to create a new page
@@ -451,7 +451,7 @@ edit_diary() {
 		else
 			PAGE="${DIARY_DIR}/${DIARY_NAME}/pages/${PAGE}" # Set the page to the selected page
 		fi
-		info "Editing page \"${PAGE}\""
+		info "Editing page \"${PAGE}\"":
 		${EDITOR} "${PAGE}" # Edit the page
 	done
 }
@@ -472,7 +472,7 @@ delete_diary() {
 		DIARY_TO_DELETE=$2
 	fi
 	if [[ ${DIARY_TO_DELETE} == "Quit" ]]; then # check if the user chose to quit
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -482,7 +482,7 @@ delete_diary() {
 			rm -rf "${DIARY_DIR:?}/${DIARY_TO_DELETE}" # Delete the diary
 			success "Deleted diary \"${DIARY_TO_DELETE}\""
 		else
-			info "cancelled, exiting..."
+			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
@@ -506,7 +506,7 @@ clean_diaries() {
 	for question in "${QUESTIONS[@]}"; do    # Loop through all questions
 		CLEAN_DECISION=$(choice "${question}")  # Ask the user if they are sure they want to clean up the diary directory
 		if [[ ${CLEAN_DECISION} != "y" ]]; then # Check if the user chose to cancel
-			info "cancelled, exiting..."
+			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
@@ -534,7 +534,7 @@ backup_diary() {
 		DIARY_TO_BACKUP=$2
 	fi
 	if [[ ${DIARY_TO_BACKUP} == "Quit" ]]; then # check if the user chose to quit
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -548,7 +548,7 @@ backup_diary() {
 			tar -czvf "${HOME}/backups/${DIARY_TO_BACKUP} - ${TIME}, ${DATE}.tar.gz" "${DIARY_DIR}/${DIARY_TO_BACKUP}" # Backup the diary
 			success "Backed up diary \"${DIARY_TO_BACKUP}\""
 		else
-			info "cancelled, exiting..."
+			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
@@ -579,7 +579,7 @@ backup_everything() {
 		done
 		success "Backed up everything"
 	else
-		info "cancelled, exiting..."
+		info "Cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	fi
