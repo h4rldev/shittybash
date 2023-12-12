@@ -126,6 +126,8 @@ replace_or_append_editor() {
 	fi
 }
 
+# Select entry from list using fzf or select
+
 select_in_list() {
 	local new_input_list
 	local new_list
