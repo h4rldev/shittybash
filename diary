@@ -3,9 +3,10 @@
 # set pipefail so that if any command in a pipe fails, the pipe as a whole fails
 set -o pipefail
 
-DEBUG=1          # Set to 1 to enable debug messages
-LOG=1            # Set to 1 to enable log messages
-BACKUP_ON_EXIT=0 # Set to 1 to backup all diaries on exit
+DEBUG=0                  # Set to 1 to enable debug messages
+LOG=0                    # Set to 1 to enable log messages
+BACKUP_ON_EXIT=0         # Set to 1 to backup all diaries on exit
+CHECK_IF_FZF_INSTALLED=1 # Set to 1 to check if fzf is installed
 
 # The diary directory
 DIARY_DIR="${HOME}/.diary"
@@ -20,38 +21,33 @@ CLEAR='\033[0m'
 
 # Error, success, info, debug and warning messages
 error() { # Error messages
-	if ! [[ -v ${LOG} ]]; then
-		return
+	if [[ ${LOG} -eq 1 ]]; then
+		echo -e "[${RED}ERROR${CLEAR}] ${1}"
 	fi
-	echo -e "[${RED}ERROR${CLEAR}] ${1}"
 }
 
 success() { # Success messages
-	if ! [[ -v ${LOG} ]]; then
-		return
+	if [[ ${LOG} -eq 1 ]]; then
+		echo -e "[${GREEN}SUCCESS${CLEAR}] ${1}"
 	fi
-	echo -e "[${GREEN}SUCCESS${CLEAR}] ${1}"
 }
 
 info() { # Info messages
-	if ! [[ -v ${LOG} ]]; then
-		return
+	if [[ ${LOG} -eq 1 ]]; then
+		echo -e "[${CYAN}INFO${CLEAR}] ${1}"
 	fi
-	echo -e "[${CYAN}INFO${CLEAR}] ${1}"
 }
 
 debug() { # Debug messages
-	if ! [[ -v ${DEBUG} ]]; then
-		return
+	if [[ ${DEBUG} -eq 1 ]]; then
+		echo -e "[${BLUE}DEBUG${CLEAR}] ${1}"
 	fi
-	echo -e "[${BLUE}DEBUG${CLEAR}] ${1}"
 }
 
 warn() { # Warning messages
-	if ! [[ -v ${LOG} ]]; then
-		return
+	if [[ ${LOG} -eq 1 ]]; then
+		echo -e "[${YELLOW}WARNING${CLEAR}] ${1}"
 	fi
-	echo -e "[${YELLOW}WARNING${CLEAR}] ${1}"
 }
 
 # Trap ctrl-c and call ctrl_c()
@@ -76,6 +72,12 @@ trap 'backup_on_exit' EXIT
 FZF_INSTALLED=$(command -v fzf)
 
 # Check if there is a default diary
+if [[ ${CHECK_IF_FZF_INSTALLED} -eq 1 ]]; then
+	if [[ -z ${FZF_INSTALLED} ]]; then
+		echo -e "[${GREEN}MESSAGE${CLEAR}] fzf not installed, you can install it with your package manager for a better experience"
+	fi
+fi
+
 if ! cat "${DIARY_DIR}/.default_diary" >/dev/null 2>&1; then
 	info "No default diary set"
 else
@@ -101,8 +103,10 @@ choice() {
 # Find the rc file by checking the shell, currently only supports bash and zsh
 find_rc() {
 	if [[ ${SHELL} == *"bash" ]]; then
+		debug "Found bash shell" >&2
 		echo "${HOME}/.bashrc"
 	elif [[ ${SHELL} == *"zsh" ]]; then
+		debug "Found zsh shell" >&2
 		echo "${HOME}/.zshrc"
 	else
 		error "No rc file found" >&2
@@ -119,6 +123,8 @@ replace_or_append_editor() {
 
 	if grep -Fxq "${line}" "${file}"; then # Check if the line exists in the file
 		# The line exists in the file, replace it.
+		info "found line \"${line}\" in \"${file}\""
+		debug "Replacing line \"${line}\" with \"${replacement}\" in \"${file}\""
 		sed -i "s/^${line}$/${replacement}/" "${file}" # Replace the line
 	else
 		# The line does not exist in the file, append it.
@@ -129,13 +135,12 @@ replace_or_append_editor() {
 # Select entry from list using fzf or select
 
 select_in_list() {
-	local new_input_list
 	local new_list
+	# trunk-ignore(shellcheck/SC2206)
 	local list=(${@:1:$#-1}) # Get all but the last argument
 	local prompt="${*: -1}"  # Get the last argument
-
-	new_input_list=($(for i in "${list[@]}"; do echo "$i" | sed -e 's/\(.*\)\([0-9]\+\)\(.*\)/\2 \0/'; done | sort -n -k1,1 | cut -d' ' -f2-)) # Sort the list from 1 and up
-	new_list=("New" ${new_input_list[@]} "Quit")                                                                                               # Add "New" and "Quit" to the list
+	# trunk-ignore(shellcheck/SC2206)
+	new_list=(${list[@]} "Quit") # Add "New" and "Quit" to the list
 
 	if [[ -n ${FZF_INSTALLED} ]]; then
 		debug "fzf installed, using fzf" >&2                                                             # If fzf is installed, use fzf
@@ -160,6 +165,7 @@ select_in_list() {
 			fi
 		done
 	fi
+	debug "Selected \"${RESULT}\"" >&2
 	echo "${RESULT}"
 }
 
@@ -168,17 +174,34 @@ select_in_list() {
 # Select a diary from the diary directory
 
 select_diary() {
+	local NEW_LIST
 	FIND_RESULT=$(find "${DIARY_DIR}" -maxdepth 1 -type d -printf "%f\n" | grep -v "^$(basename "${DIARY_DIR}")$") # Find all diaries
-	readarray -t DIARY_LIST <<<"${FIND_RESULT}"                                                                    # Put all diaries in an array
-	select_in_list "${DIARY_LIST[*]}" "Select diary"                                                               # Select a diary
+	readarray -t DIARY_LIST <<<"${FIND_RESULT}"
+	# trunk-ignore(shellcheck/SC2001)
+	# trunk-ignore(shellcheck/SC2250)
+	NEW_LIST=$(for i in "${DIARY_LIST[@]}"; do echo "$i" | sed -e 's/\(.*\)\([0-9]\+\)\(.*\)/\2 \0/'; done | sort -n -k1,1 | cut -d' ' -f2-)
+	if [[ $1 == "New" ]]; then
+		debug 'Adding "New" to the list' >&2
+		# trunk-ignore(shellcheck/SC2206)
+		NEW_LIST=("${1}" ${NEW_LIST[@]}) # Add "New" to the list
+	fi
+	select_in_list "${NEW_LIST[*]}" "Select diary" # Select a diary
 }
 
 # Select a page from the given diary (or ask for a diary if none is given)
 
 select_page() {
+	local NEW_LIST
 	FIND_PAGES=$(find "${DIARY_DIR}/${1}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$") # Find all pages
 	readarray -t PAGE_LIST <<<"${FIND_PAGES}"                                                                           # Put all pages in an array
-	select_in_list "${PAGE_LIST[*]}" "Select page"                                                                      # Select a page
+	# trunk-ignore(shellcheck/SC2250)
+	# trunk-ignore(shellcheck/SC2001)
+	NEW_LIST=$(for i in "${PAGE_LIST[@]}"; do echo "$i" | sed -e 's/\(.*\)\([0-9]\+\)\(.*\)/\2 \0/'; done | sort -n -k1,1 | cut -d' ' -f2-)
+	if [[ $2 == "New" ]]; then
+		# trunk-ignore(shellcheck/SC2206)
+		NEW_LIST=("${2}" ${NEW_LIST[@]}) # Add "New" to the list
+	fi
+	select_in_list "${NEW_LIST[*]}" "Select page" # Select a page
 }
 
 # Rename the given diary (or ask for a diary if none is given)
@@ -278,7 +301,7 @@ default_diary() {
 
 	if [[ -z $2 ]]; then            # Check if a diary name was given
 		if [[ $1 == "default" ]]; then # Check if the function was called from another function
-			NEW_DEFAULT_DIARY=$(select_diary)
+			NEW_DEFAULT_DIARY=$(select_diary "New")
 			if [[ ${NEW_DEFAULT_DIARY} == "Quit" ]]; then
 				info "Cancelled, exiting..."
 				debug 'Exiting with code 0, selected "cancel"'
@@ -307,8 +330,8 @@ default_diary() {
 
 list_diaries() {
 	local NEW_DIARY_STATUS
-	if [[ -z ${2} ]]; then  # Check if a diary name was given
-		RESULT=$(select_diary) # Select a diary
+	if [[ -z ${2} ]]; then        # Check if a diary name was given
+		RESULT=$(select_diary "New") # Select a diary
 		if [[ ${RESULT} == "New" ]]; then
 			NEW_DIARY_STATUS=$(new_diary_small) # Create a new diary
 		fi
@@ -400,7 +423,7 @@ edit_diary() {
 			warn "No diary name given from any other function, checking for default diary"
 			if [[ -z ${DEFAULT_DIARY} ]]; then # Check if a default diary is set
 				warn "No default diary set, select a diary"
-				DIARY_NAME=$(select_diary)
+				DIARY_NAME=$(select_diary "New")
 			else
 				DIARY_NAME=${DEFAULT_DIARY}
 			fi
@@ -439,7 +462,7 @@ edit_diary() {
 	while true; do                                                                                                                # Loop until the user chooses to quit
 		FIND_PAGES=$(find "${DIARY_DIR}/${DIARY_NAME}/pages/" -maxdepth 1 -type f -printf "%f\n" | grep -v "^$(basename "pages/")$") # Find all pages
 		readarray -t PAGE_LIST <<<"${FIND_PAGES}"                                                                                    # Put all pages in an array
-		PAGE=$(select_page "${DIARY_NAME}")                                                                                          # Select a page
+		PAGE=$(select_page "${DIARY_NAME}" "New")                                                                                    # Select a page
 		if [[ ${PAGE} == "Quit" ]]; then                                                                                             # Check if the user chose to quit
 			info "Cancelled, exiting..."
 			debug 'Exiting with code 0, selected "Quit"'
