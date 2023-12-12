@@ -16,47 +16,47 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-NC='\033[0m'
+CLEAR='\033[0m'
 
 # Error, success, info, debug and warning messages
 error() { # Error messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
-	echo -e "[${RED}ERROR${NC}] ${1}"
+	echo -e "[${RED}ERROR${CLEAR}] ${1}"
 }
 
 success() { # Success messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
-	echo -e "[${GREEN}SUCCESS${NC}] ${1}"
+	echo -e "[${GREEN}SUCCESS${CLEAR}] ${1}"
 }
 
 info() { # Info messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
-	echo -e "[${CYAN}INFO${NC}] ${1}"
+	echo -e "[${CYAN}INFO${CLEAR}] ${1}"
 }
 
 debug() { # Debug messages
 	if ! [[ -v ${DEBUG} ]]; then
 		return
 	fi
-	echo -e "[${BLUE}DEBUG${NC}] ${1}"
+	echo -e "[${BLUE}DEBUG${CLEAR}] ${1}"
 }
 
 warn() { # Warning messages
 	if ! [[ -v ${LOG} ]]; then
 		return
 	fi
-	echo -e "[${YELLOW}WARNING${NC}] ${1}"
+	echo -e "[${YELLOW}WARNING${CLEAR}] ${1}"
 }
 
 # Trap ctrl-c and call ctrl_c()
 ctrl_c() {
-	echo -e "\nCaught ${GREEN}CTRL-C${NC}, aborting..." # Exit with code 0 gracefully if the user presses ctrl-c
+	echo -e "\CLEARaught ${GREEN}CTRL-C${CLEAR}, aborting..." # Exit with code 0 gracefully if the user presses ctrl-c
 	exit 1
 }
 
@@ -93,7 +93,7 @@ fi
 
 # Ask the user a yes or no question and return the answer
 choice() {
-	echo -e -n "${BLUE}${1} (y/n)${NC}: " >&2
+	echo -e -n "${BLUE}${1} (y/n)${CLEAR}: " >&2
 	read -r CHOICE
 	echo "${CHOICE}"
 }
@@ -200,7 +200,7 @@ rename_diary() {
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
-		echo -e -n "${BLUE}Enter new diary name${NC}: " # Ask the user for a new diary name
+		echo -e -n "${BLUE}Enter new diary name${CLEAR}: " # Ask the user for a new diary name
 		read -r NEW_DIARY_NAME
 		local NEW_DIARY="${DIARY_DIR}/${NEW_DIARY_NAME}" # The new diary directory
 		if [[ -d ${NEW_DIARY} ]]; then                   # Check if the diary already exists
@@ -216,7 +216,7 @@ rename_diary() {
 # Create a new diary with the given name (or ask for a name if none is given) but smaller with less checks
 
 new_diary_small() {
-	echo -e -n "${BLUE}Enter diary name${NC}: " >&2 # Ask the user for a diary name
+	echo -e -n "${BLUE}Enter diary name${CLEAR}: " >&2 # Ask the user for a diary name
 	read -r DIARY_NAME
 	local NEW_DIARY="${DIARY_DIR}/${DIARY_NAME}"
 	if [[ -d ${NEW_DIARY} ]]; then # Check if the diary already exists
@@ -235,7 +235,7 @@ new_diary_small() {
 new_diary() {
 	if [[ -z $2 ]]; then # Check if a diary name was given
 		warn "No diary name given"
-		echo -e -n "${BLUE}Enter diary name${NC}: "
+		echo -e -n "${BLUE}Enter diary name${CLEAR}: "
 		read -r DIARY_NAME
 	else
 		DIARY_NAME=$2
@@ -278,7 +278,7 @@ default_diary() {
 		if [[ $1 == "default" ]]; then # Check if the function was called from another function
 			NEW_DEFAULT_DIARY=$(select_diary)
 			if [[ ${NEW_DEFAULT_DIARY} == "Quit" ]]; then
-				info "Cancelled, exiting..."
+				info "cancelled, exiting..."
 				debug 'Exiting with code 0, selected "cancel"'
 				exit 0
 			fi
@@ -291,7 +291,7 @@ default_diary() {
 
 	FINAL_DEFAULT_DIARY_DECISION=$(choice "Are you sure you want to set the default diary to \"${NEW_DEFAULT_DIARY}\"?") # Ask the user if they are sure they want to set the default diary
 	if [[ ${FINAL_DEFAULT_DIARY_DECISION} == "n" ]]; then
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -313,18 +313,18 @@ list_diaries() {
 	fi
 
 	if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then # Check if the user chose to quit
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	fi
 
 	if [[ ${RESULT} == "Quit" ]]; then # Check if the user chose to quit
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
 		info "Selected diary \"${RESULT}\""
-		local ACTIONS=("Edit" "Rename" "Make default" "Delete" "Cancel")                              # The actions to choose from
+		local ACTIONS=("Edit" "Rename" "Make default" "Delete" "cancel")                              # The actions to choose from
 		if [[ -n ${FZF_INSTALLED} ]]; then                                                            # If fzf is installed, use fzf
 			ACTION=$(printf "%s\n" "${ACTIONS[@]}" | fzf --layout=reverse --prompt="Select an action: ") # Use fzf to select an action
 			case ${ACTION} in                                                                            # Check which action was selected and call the appropriate function
@@ -344,8 +344,8 @@ list_diaries() {
 				debug 'Selected "delete"'
 				delete_diary "${RESULT}"
 				;;
-			"Cancel")
-				info "Cancelled, exiting..."
+			"cancel")
+				info "cancelled, exiting..."
 				debug 'Exiting with code 0, selected "cancel"'
 				exit 0
 				;;
@@ -374,8 +374,8 @@ list_diaries() {
 					debug 'Selected "delete"'
 					delete_diary "${RESULT}"
 					;;
-				"Cancel")
-					info "Cancelled, exiting..."
+				"cancel")
+					info "cancelled, exiting..."
 					debug 'Exiting with code 0, selected "cancel"'
 					exit 0
 					;;
@@ -412,21 +412,21 @@ edit_diary() {
 		local NEW_DIARY_STATUS
 		NEW_DIARY_STATUS=$(new_diary_small)          # Create a new diary
 		if [[ ${NEW_DIARY_STATUS} == "Quit" ]]; then # Check if the user chose to quit
-			info "Cancelled, exiting..."
+			info "cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
 	fi
 	debug "Using diary \"${DIARY_NAME}\""
 	if [[ ${DIARY_NAME} == "Quit" ]]; then # Check if the user chose to quit
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	elif [[ -z ${EDITOR} ]]; then # Check if an editor is set
 		warn "No editor set"
 		EDITOR_CHOICE=$(choice "Do you want to set an editor now?, if not, the default editor will be nano")
 		if [[ ${EDITOR_CHOICE} == "y" ]]; then # Check if the user wants to set an editor
-			echo -e -n "${BLUE}Enter editor${NC}: "
+			echo -e -n "${BLUE}Enter editor${CLEAR}: "
 			read -r EDITOR
 		else
 			EDITOR="vim" # else Set the default editor to vim
@@ -439,7 +439,7 @@ edit_diary() {
 		readarray -t PAGE_LIST <<<"${FIND_PAGES}"                                                                                    # Put all pages in an array
 		PAGE=$(select_page "${DIARY_NAME}")                                                                                          # Select a page
 		if [[ ${PAGE} == "Quit" ]]; then                                                                                             # Check if the user chose to quit
-			info "Cancelled, exiting..."
+			info "cancelled, exiting..."
 			debug 'Exiting with code 0, selected "Quit"'
 			exit 0
 		elif [[ ${PAGE} == "New" ]]; then # Check if the user chose to create a new page
@@ -470,7 +470,7 @@ delete_diary() {
 		DIARY_TO_DELETE=$2
 	fi
 	if [[ ${DIARY_TO_DELETE} == "Quit" ]]; then # check if the user chose to quit
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -480,7 +480,7 @@ delete_diary() {
 			rm -rf "${DIARY_DIR:?}/${DIARY_TO_DELETE}" # Delete the diary
 			success "Deleted diary \"${DIARY_TO_DELETE}\""
 		else
-			info "Cancelled, exiting..."
+			info "cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
@@ -504,7 +504,7 @@ clean_diaries() {
 	for question in "${QUESTIONS[@]}"; do    # Loop through all questions
 		CLEAN_DECISION=$(choice "${question}")  # Ask the user if they are sure they want to clean up the diary directory
 		if [[ ${CLEAN_DECISION} != "y" ]]; then # Check if the user chose to cancel
-			info "Cancelled, exiting..."
+			info "cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
@@ -532,7 +532,7 @@ backup_diary() {
 		DIARY_TO_BACKUP=$2
 	fi
 	if [[ ${DIARY_TO_BACKUP} == "Quit" ]]; then # check if the user chose to quit
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	else
@@ -546,7 +546,7 @@ backup_diary() {
 			tar -czvf "${HOME}/backups/${DIARY_TO_BACKUP} - ${TIME}, ${DATE}.tar.gz" "${DIARY_DIR}/${DIARY_TO_BACKUP}" # Backup the diary
 			success "Backed up diary \"${DIARY_TO_BACKUP}\""
 		else
-			info "Cancelled, exiting..."
+			info "cancelled, exiting..."
 			debug 'Exiting with code 0, selected "cancel"'
 			exit 0
 		fi
@@ -577,7 +577,7 @@ backup_everything() {
 		done
 		success "Backed up everything"
 	else
-		info "Cancelled, exiting..."
+		info "cancelled, exiting..."
 		debug 'Exiting with code 0, selected "cancel"'
 		exit 0
 	fi
@@ -589,46 +589,46 @@ write_help() {
 	echo -e "Usage: $0 [OPTION] [DIARY] \n"
 
 	echo -e "Options:"
-	echo -e "${RED}new, n, --new, -n,${NC} \t\t |"
-	echo -e "${RED}create, cr, --create, -cr,${NC} \t |"
-	echo -e "${RED}add, a, --add, -a,${NC} \t\t | \t${CYAN}Creates a new diary with the given name${NC}"
-	echo -e "${RED}make, m, --make, -m,${NC} \t\t |"
-	echo -e "${RED}-yes${NC} \t\t\t\t |"
+	echo -e "${RED}new, n, --new, -n,${CLEAR} \t\t |"
+	echo -e "${RED}create, cr, --create, -cr,${CLEAR} \t |"
+	echo -e "${RED}add, a, --add, -a,${CLEAR} \t\t | \t${CYAN}Creates a new diary with the given name${CLEAR}"
+	echo -e "${RED}make, m, --make, -m,${CLEAR} \t\t |"
+	echo -e "${RED}-yes${CLEAR} \t\t\t\t |"
 
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}default, d, --default, -d${NC} \t | \t${CYAN}Sets the default diary${NC}"
+	echo -e "${RED}default, d, --default, -d${CLEAR} \t | \t${CYAN}Sets the default diary${CLEAR}"
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}list, ls, --list, -ls,${NC} \t\t | \t${CYAN}Lists all diaries and allows you to choose${NC}"
-	echo -e "${RED}view, v, --view, -v${NC} \t\t | \t${CYAN}which to rename, edit, delete and make default${NC}"
-
-	echo -e "\t\t\t\t |"
-
-	echo -e "${RED}edit, e, --edit, -e${NC} \t\t | \t${CYAN}Edits the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${NC}"
+	echo -e "${RED}list, ls, --list, -ls,${CLEAR} \t\t | \t${CYAN}Lists all diaries and allows you to choose${CLEAR}"
+	echo -e "${RED}view, v, --view, -v${CLEAR} \t\t | \t${CYAN}which to rename, edit, delete and make default${CLEAR}"
 
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}rename, rn, --rename, -rn${NC} \t | \t${CYAN}Renames the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${NC}"
+	echo -e "${RED}edit, e, --edit, -e${CLEAR} \t\t | \t${CYAN}Edits the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${CLEAR}"
 
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}delete, del, --delete, -del,${NC} \t |"
-	echo -e "${RED}rm, remove, -rm, --remove,${NC} \t | \t${CYAN}Deletes the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${NC}"
-	echo -e "${RED}-no${NC} \t\t\t\t |"
+	echo -e "${RED}rename, rn, --rename, -rn${CLEAR} \t | \t${CYAN}Renames the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${CLEAR}"
 
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}clean, cl, --clean, -cl${NC} \t | \t${CYAN}Cleans up the diary directory${NC}"
+	echo -e "${RED}delete, del, --delete, -del,${CLEAR} \t |"
+	echo -e "${RED}rm, remove, -rm, --remove,${CLEAR} \t | \t${CYAN}Deletes the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${CLEAR}"
+	echo -e "${RED}-no${CLEAR} \t\t\t\t |"
 
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}backup, b, --backup, -b${NC} \t | \t${CYAN}Backs up the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${NC}"
-	echo -e "${RED}-all${NC} \t\t\t\t | \t${CYAN}Backs up everything${NC}"
+	echo -e "${RED}clean, cl, --clean, -cl${CLEAR} \t | \t${CYAN}Cleans up the diary directory${CLEAR}"
 
 	echo -e "\t\t\t\t |"
 
-	echo -e "${RED}help, h, --help, -h, *${NC} \t\t | \t${CYAN}Shows this help message${NC} \n"
+	echo -e "${RED}backup, b, --backup, -b${CLEAR} \t | \t${CYAN}Backs up the given diary/selected diary (${GREEN}or the default diary if none is given${CYAN})${CLEAR}"
+	echo -e "${RED}-all${CLEAR} \t\t\t\t | \t${CYAN}Backs up everything${CLEAR}"
+
+	echo -e "\t\t\t\t |"
+
+	echo -e "${RED}help, h, --help, -h, *${CLEAR} \t\t | \t${CYAN}Shows this help message${CLEAR} \n"
 }
 
 # Check for the first argument and call the appropriate function
