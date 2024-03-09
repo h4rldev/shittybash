@@ -162,7 +162,7 @@ select_in_list() {
 				echo "You chose: ${opt}" >&2 # Check if the user chose a diary
 				RESULT=${opt}
 				break
-			fi
+      fi
 		done
 	fi
 	debug "Selected \"${RESULT}\"" >&2
